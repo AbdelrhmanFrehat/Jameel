@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+.pytest_cache/
+logs/
+install/backups/
+install/state.json
+firmware/claude_remote/build/

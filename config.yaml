@@ -1,0 +1,87 @@
+# Claude Hardware Remote - bridge configuration
+# Every key is optional; missing keys use the defaults shown here.
+
+serial:
+  port: auto            # "auto" = first port whose USB VID matches `vids`, else an explicit port such as COM7
+  baud: 115200
+  vids: [0x303A]        # Espressif USB-Serial-JTAG (ESP32-S3 native USB)
+
+bridge:
+  host: 127.0.0.1       # loopback ONLY. The daemon refuses to start on any other address.
+  port: 8765
+
+claude:
+  ask_on_stop: true                 # show CONTINUE / DONE on the device when Claude stops
+  max_auto_continues: 20            # consecutive hardware continues before an explicit LIMIT confirmation
+  intercept_ask_user_question: true # answer Claude Code's native AskUserQuestion on the device
+  announce_remote_in_prompt: true   # tell Claude the remote is connected (SessionStart/UserPromptSubmit context)
+
+controller:
+  response_timeout_seconds: 300     # questions (MCP ask_user / AskUserQuestion)
+  permission_timeout_seconds: 300   # PermissionRequest hook wait before falling back to the PC dialog
+  stop_timeout_seconds: 300         # Stop hook wait before letting Claude stop normally
+  heartbeat_interval_seconds: 2
+  device_timeout_seconds: 8         # no valid traffic from the device for this long = disconnected
+  reconnect_delay_seconds: 2
+  pc_activity:                      # hand a pending request back to the PC when you are clearly at the computer
+    enabled: true                   # Windows only (GetLastInputInfo); silently off elsewhere
+    kinds: [stop, permission, question]
+    present_window_seconds: 90      # keyboard/mouse used this recently when the request arrives = you are at the PC
+    present_wait_seconds: 8         # ...then the remote only gets this long before the PC takes over
+    grace_seconds: 0.5              # any NEW input after the request arrived hands over immediately
+
+shortcuts:                          # fixed instructions you can send from the device (B1 on the status screen,
+  - label: Improve design           # B3 on the STOPPED screen). Up to 16; labels <= 28 chars (Arabic is fine).
+    prompt: "Review the UI/design of what you are working on and improve it: visual hierarchy, spacing, consistency, responsiveness and accessibility. Keep behaviour unchanged and summarize what you changed."
+  - label: Refactor code
+    prompt: "Refactor the code you are working on for readability and maintainability without changing behaviour: clearer names, smaller functions, less duplication. Run the existing tests afterwards."
+  - label: Write tests
+    prompt: "Add or extend automated tests for the code you just changed, covering the main paths and edge cases, then run them and fix failures."
+  - label: Fix bugs
+    prompt: "Look for bugs, error-handling gaps and edge cases in the current change, fix them, and explain each fix briefly."
+  - label: Review
+    prompt: "Review the current changes as a strict senior code reviewer, list the issues you find, and fix the important ones."
+  - label: Explain
+    prompt: "Explain briefly, in simple terms, what you have done so far, what remains, and any decisions I should know about."
+  - label: Commit
+    prompt: "Commit the current work with a clear, conventional commit message. Do not push."
+  - label: Continue
+    prompt: "Continue with the current task and make further useful progress."
+
+workers:                            # a shortcut sent to an IDLE session starts a new `claude -p` in that project
+  enabled: true
+  ask_first: true                   # YES/NO on the device before anything starts
+  max_turns: 60                     # hard cap per worker run (tool calls + replies)
+  max_parallel: 2
+  model: ""                         # empty = your Claude Code default
+
+composer:
+  max_text_length: 256
+  quick_replies: [YES, NO, CONTINUE, RETRY, SKIP]   # B1-B5 in the free-text composer (max 5, 12 chars each)
+  tokens:                                             # words offered in the composer's WORDS set (max 16, 20 chars each)
+    - yes
+    - no
+    - continue
+    - retry
+    - skip
+    - use
+    - keep
+    - remove
+    - change
+    - PostgreSQL
+    - SQL Server
+    - Redis
+    - API
+    - backend
+    - frontend
+    - production
+
+logging:
+  level: INFO           # DEBUG logs every wire line (still secret-redacted)
+  file: logs/bridge.log
+  max_bytes: 2000000
+  backup_count: 3
+
+testing:
+  fake_device: false    # NEVER enable for real use: simulates the ESP32 and auto-answers requests
+  fake_device_policy: first
